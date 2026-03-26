@@ -6,7 +6,8 @@ import {
   MapPin, Plus, DollarSign, Cloud, Calendar, Navigation, Trash2, Heart, 
   Sun, Wind, Clock, PieChart, X, Droplets, CloudRain, 
   RefreshCw, CloudSnow, CloudLightning, Pencil, CheckCircle2, 
-  Circle, Utensils, ShoppingBag, Palmtree, ListTodo, AlertTriangle, Timer
+  Circle, Utensils, ShoppingBag, Palmtree, ListTodo, AlertTriangle, Timer,
+  Sunset
 } from 'lucide-react';
 
 const firebaseConfig = {
@@ -105,6 +106,7 @@ export default function App() {
     label: '載入中',
     humidity: '--',
     windSpeed: '--',
+    sunset: '--:--',
     icon: Sun,
     locationName: '定位中...',
     loading: true
@@ -123,7 +125,6 @@ export default function App() {
   // 計算旅行狀態 (倒數、旅行中、結束後)
   const tripStatus = useMemo(() => {
     const now = new Date();
-    // 歸零時分秒
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const start = new Date(START_DATE.getFullYear(), START_DATE.getMonth(), START_DATE.getDate());
     const end = new Date(END_DATE.getFullYear(), END_DATE.getMonth(), END_DATE.getDate());
@@ -146,10 +147,20 @@ export default function App() {
   const fetchWeather = async (lat, lon) => {
     try {
       setWeather(prev => ({ ...prev, loading: true }));
-      const response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&timezone=auto`);
+      // 加入 daily=sunset 以獲取日落時間
+      const response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&daily=sunset&timezone=auto`);
       const data = await response.json();
+      
       const current = data.current;
+      const daily = data.daily;
       const info = getWeatherInfo(current.weather_code);
+      
+      // 處理日落時間格式 (取當天)
+      let sunsetStr = '--:--';
+      if (daily && daily.sunset && daily.sunset[0]) {
+        const sunsetDate = new Date(daily.sunset[0]);
+        sunsetStr = sunsetDate.toLocaleTimeString('zh-HK', { hour: '2-digit', minute: '2-digit', hour12: false });
+      }
       
       let locName = lat === 43.06 ? '札幌' : '當前位置';
       try {
@@ -163,6 +174,7 @@ export default function App() {
         label: info.label,
         humidity: current.relative_humidity_2m + '%',
         windSpeed: current.wind_speed_10m + ' km/h',
+        sunset: sunsetStr,
         icon: info.icon,
         iconColor: info.color,
         locationName: locName,
@@ -401,7 +413,7 @@ export default function App() {
               </div>
             </div>
 
-            <div className="mt-4 pt-3 border-t border-white/10 flex gap-5">
+            <div className="mt-4 pt-3 border-t border-white/10 flex gap-4">
                 <div className="flex items-center gap-1.5">
                     <Droplets size={11} className="text-blue-200" />
                     <span className="text-[10px] font-black">{weather.humidity}</span>
@@ -409,6 +421,10 @@ export default function App() {
                 <div className="flex items-center gap-1.5">
                     <Wind size={11} className="text-blue-200" />
                     <span className="text-[10px] font-black">{weather.windSpeed}</span>
+                </div>
+                <div className="flex items-center gap-1.5 border-l border-white/10 pl-4">
+                    <Sunset size={11} className="text-amber-200" />
+                    <span className="text-[10px] font-black">{weather.sunset}</span>
                 </div>
             </div>
           </div>
