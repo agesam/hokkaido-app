@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>北海道旅行</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      /* 防止手機瀏覽器下拉重新整理的視覺干擾 */
+      body { -webkit-overflow-scrolling: touch; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <script type="importmap">
+      {
+        "imports": {
+          "react": "https://esm.sh/react@18.2.0",
+          "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+          "firebase/app": "https://esm.sh/firebase@10.7.1/app",
+          "firebase/auth": "https://esm.sh/firebase@10.7.1/auth",
+          "firebase/firestore": "https://esm.sh/firebase@10.7.1/firestore",
+          "lucide-react": "https://esm.sh/lucide-react@0.263.1"
+        }
+      }
+    </script>
+
+    <script type="module">
+      import React from 'react';
+      import ReactDOM from 'react-dom/client';
+      import App from './App.jsx';
+
+      // 啟動程式
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(React.createElement(App));
+    </script>
+  </body>
+</html>
