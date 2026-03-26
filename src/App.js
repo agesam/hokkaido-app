@@ -6,15 +6,8 @@ import {
   MapPin, Plus, DollarSign, Cloud, Calendar, Navigation, Trash2, Heart, 
   Sun, Wind, Clock, PieChart, X, Droplets, CloudRain, 
   RefreshCw, CloudSnow, CloudLightning, Pencil, CheckCircle2, 
-  Circle, Utensils, ShoppingBag, Palmtree, ListTodo, AlertTriangle, ReceiptText
+  Circle, Utensils, ShoppingBag, Palmtree, ListTodo, AlertTriangle, Timer
 } from 'lucide-react';
-
-/**
- * 💡 iPhone 安裝建議：
- * 1. 在 Safari 打開此網頁
- * 2. 點擊「分享」
- * 3. 選擇「加入主畫面」
- */
 
 const firebaseConfig = {
   apiKey: "AIzaSyD9EF46xjmDEPD3bQxycbxcctYzHpzlyM8",
@@ -33,6 +26,10 @@ const appId = "hokkaido2026";
 const JPY_TO_HKD = 0.052;
 const HKD_TO_JPY = 1 / JPY_TO_HKD;
 
+// 旅行日期設定
+const START_DATE = new Date('2026-06-12T00:00:00');
+const END_DATE = new Date('2026-06-19T23:59:59');
+
 const getWeatherInfo = (code) => {
   if (code === 0) return { label: '晴朗', icon: Sun, color: 'text-yellow-300' };
   if (code <= 3) return { label: '多雲', icon: Cloud, color: 'text-slate-200' };
@@ -46,24 +43,19 @@ const getWeatherInfo = (code) => {
 const ExpensePieChart = ({ data, totalJPY, totalHKD }) => {
   const total = data.reduce((sum, item) => sum + item.value, 0);
   let cumulativePercent = 0;
-
   const getCoordinatesForPercent = (percent) => {
     const x = Math.cos(2 * Math.PI * percent);
     const y = Math.sin(2 * Math.PI * percent);
     return [x, y];
   };
-
-  if (total === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-8">
-        <div className="w-24 h-24 rounded-full border-2 border-slate-100 border-dashed flex items-center justify-center">
-          <PieChart className="text-slate-200" size={24} />
-        </div>
-        <p className="text-slate-300 text-[10px] font-black uppercase mt-4 tracking-widest">暫無數據</p>
+  if (total === 0) return (
+    <div className="flex flex-col items-center justify-center py-8">
+      <div className="w-24 h-24 rounded-full border-2 border-slate-100 border-dashed flex items-center justify-center">
+        <PieChart className="text-slate-200" size={24} />
       </div>
-    );
-  }
-
+      <p className="text-slate-300 text-[10px] font-black uppercase mt-4 tracking-widest">暫無數據</p>
+    </div>
+  );
   return (
     <div className="flex flex-col items-center gap-8 py-2 w-full">
       <div className="relative w-40 h-40">
@@ -74,27 +66,19 @@ const ExpensePieChart = ({ data, totalJPY, totalHKD }) => {
             const slicePercent = slice.value / total;
             const endPercent = startPercent + slicePercent;
             cumulativePercent = endPercent;
-
             const [startX, startY] = getCoordinatesForPercent(startPercent);
             const [endX, endY] = getCoordinatesForPercent(endPercent);
             const largeArcFlag = slicePercent > 0.5 ? 1 : 0;
-            const pathData = [
-              `M ${startX} ${startY}`,
-              `A 1 1 0 ${largeArcFlag} 1 ${endX} ${endY}`,
-              `L 0 0`,
-            ].join(' ');
-
+            const pathData = [`M ${startX} ${startY}`, `A 1 1 0 ${largeArcFlag} 1 ${endX} ${endY}`, `L 0 0`].join(' ');
             return <path key={i} d={pathData} fill={slice.color} className="transition-opacity hover:opacity-80" />;
           })}
           <circle cx="0" cy="0" r="0.78" fill="white" />
         </svg>
-
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
           <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest mb-0.5">總開支 (HKD)</span>
           <span className="text-xl font-black text-slate-800 leading-none">HK${totalHKD.toLocaleString()}</span>
         </div>
       </div>
-
       <div className="flex flex-wrap justify-center gap-x-4 gap-y-1.5 px-2">
         {data.map((slice, i) => slice.value > 0 && (
           <div key={i} className="flex items-center gap-1">
@@ -136,22 +120,27 @@ export default function App() {
   const [newExpense, setNewExpense] = useState({ item: '', amount: '', category: '飲食', currency: 'JPY' });
   const [newWish, setNewWish] = useState({ title: '', category: '餐廳', note: '', completed: false });
 
-  useEffect(() => {
-    const metaTags = [
-      { name: 'apple-mobile-web-app-capable', content: 'yes' },
-      { name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' },
-      { name: 'apple-mobile-web-app-title', content: '北海道2026' }
-    ];
+  // 計算旅行狀態 (倒數、旅行中、結束後)
+  const tripStatus = useMemo(() => {
+    const now = new Date();
+    // 歸零時分秒
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const start = new Date(START_DATE.getFullYear(), START_DATE.getMonth(), START_DATE.getDate());
+    const end = new Date(END_DATE.getFullYear(), END_DATE.getMonth(), END_DATE.getDate());
 
-    metaTags.forEach(tag => {
-      let element = document.querySelector(`meta[name="${tag.name}"]`);
-      if (!element) {
-        element = document.createElement('meta');
-        element.name = tag.name;
-        document.head.appendChild(element);
-      }
-      element.content = tag.content;
-    });
+    const diffMs = today - start;
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (today < start) {
+      const countdown = Math.ceil((start - today) / (1000 * 60 * 60 * 24));
+      return { text: `出發倒數 ${countdown} 日`, icon: Clock, color: 'bg-white/20 border-white/10' };
+    } else if (today >= start && today <= end) {
+      const dayNum = diffDays + 1;
+      return { text: `旅行第 ${dayNum} 日`, icon: Palmtree, color: 'bg-yellow-400 text-yellow-900 border-yellow-300 shadow-sm' };
+    } else {
+      const pastDays = Math.ceil((today - end) / (1000 * 60 * 60 * 24));
+      return { text: `距離上次旅行 ${pastDays} 日`, icon: Timer, color: 'bg-white/10 border-white/5' };
+    }
   }, []);
 
   const fetchWeather = async (lat, lon) => {
@@ -167,7 +156,7 @@ export default function App() {
           const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10`);
           const geoData = await geoRes.json();
           locName = geoData.address.city || geoData.address.town || geoData.address.province || locName;
-      } catch (e) { /* fallback */ }
+      } catch (e) { }
 
       setWeather({
         temp: Math.round(current.temperature_2m),
@@ -206,7 +195,7 @@ export default function App() {
           await signInAnonymously(auth);
         }
       } catch (error) {
-        setAuthError("無法連接到服務，請檢查網路。");
+        setAuthError("無法連接到服務。");
       }
     };
     initAuth();
@@ -304,7 +293,7 @@ export default function App() {
       setNewTrip({ date: '2026-06-12', time: '10:00', location: '', note: '' });
       setEditingTripId(null);
       setIsTripModalOpen(false);
-    } catch (e) { console.error(e); }
+    } catch (e) { }
   };
 
   const toggleWishStatus = async (item) => {
@@ -312,7 +301,7 @@ export default function App() {
     try {
       const ref = doc(db, 'artifacts', appId, 'public', 'data', 'wishlist', item.id);
       await updateDoc(ref, { completed: !item.completed });
-    } catch (e) { console.error(e); }
+    } catch (e) { }
   };
 
   const addItem = async (colName, itemData, resetFn, modalSetter) => {
@@ -322,7 +311,7 @@ export default function App() {
       await addDoc(ref, { ...itemData, createdAt: Date.now(), userId: user.uid });
       if (resetFn) resetFn();
       modalSetter(false);
-    } catch (e) { console.error(e); }
+    } catch (e) { }
   };
 
   const askDelete = (col, id, title) => {
@@ -334,28 +323,26 @@ export default function App() {
     try {
       await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', deleteConfirm.col, deleteConfirm.id));
       setDeleteConfirm({ open: false, col: '', id: '', title: '' });
-    } catch (e) { console.error(e); }
+    } catch (e) { }
   };
 
   if (authError) return (
-    <div className="h-screen flex flex-col items-center justify-center p-6 text-center space-y-4">
-      <div className="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center"><X size={32} /></div>
+    <div className="h-screen flex flex-col items-center justify-center p-6 text-center">
       <p className="text-slate-600 font-bold">{authError}</p>
-      <button onClick={() => window.location.reload()} className="px-6 py-2 bg-blue-500 text-white rounded-full font-bold">重新嘗試</button>
+      <button onClick={() => window.location.reload()} className="mt-4 px-6 py-2 bg-blue-500 text-white rounded-full">重試</button>
     </div>
   );
 
   if (!user) return (
-    <div className="h-screen flex flex-col items-center justify-center space-y-4">
-      <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-500 rounded-full animate-spin"></div>
-      <p className="text-slate-400 font-bold animate-pulse">正在同步雲端數據...</p>
+    <div className="h-screen flex flex-col items-center justify-center">
+      <div className="w-10 h-10 border-4 border-blue-100 border-t-blue-500 rounded-full animate-spin"></div>
     </div>
   );
 
   return (
     <div className="min-h-screen bg-slate-50 pb-32 text-slate-800 font-sans relative overflow-x-hidden pt-6">
       
-      {/* 優化後的透明頁首區，僅保留資訊卡片 */}
+      {/* 頁首動態卡片 */}
       <header className="px-5 mb-4 max-w-md mx-auto">
           <div className="bg-gradient-to-br from-blue-600 to-indigo-600 rounded-[2.5rem] p-5 text-white shadow-xl shadow-blue-100 relative overflow-hidden active:scale-95 transition-transform cursor-pointer" 
                onClick={() => {
@@ -365,15 +352,24 @@ export default function App() {
                }}>
             <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl" />
             
-            <div className="flex items-center gap-1.5 mb-3 opacity-90">
-               <MapPin size={12} className="text-blue-200" />
-               <span className="text-[10px] font-black uppercase tracking-widest">{weather.locationName}</span>
-               {weather.loading && <RefreshCw size={10} className="animate-spin ml-auto" />}
+            <div className="flex justify-between items-center mb-4 relative z-10">
+               {/* 左側：定位城市 */}
+               <div className="flex items-center gap-1.5 bg-black/10 px-2.5 py-1 rounded-full backdrop-blur-sm border border-white/5">
+                 <MapPin size={10} className="text-blue-200" />
+                 <span className="text-[9px] font-black uppercase tracking-[0.1em]">{weather.locationName}</span>
+                 {weather.loading && <RefreshCw size={8} className="animate-spin" />}
+               </div>
+               
+               {/* 右側：日期狀態 (倒數/旅行中) */}
+               <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full ${tripStatus.color} backdrop-blur-md border shadow-sm`}>
+                 <tripStatus.icon size={11} />
+                 <span className="text-[10px] font-black tracking-tight">{tripStatus.text}</span>
+               </div>
             </div>
 
             <div className="flex justify-between items-center relative z-10">
               <div className="flex-1 pr-4 border-r border-white/20">
-                <p className="text-[9px] font-black uppercase tracking-widest opacity-60 mb-1">下一站</p>
+                <p className="text-[9px] font-black uppercase tracking-widest opacity-60 mb-1">下一站預告</p>
                 {nextTrip ? (
                   <div>
                     <h2 className="text-[15px] font-black leading-tight line-clamp-1">
@@ -381,11 +377,11 @@ export default function App() {
                     </h2>
                     <div className="flex items-center gap-1.5 mt-1 opacity-90">
                       <Clock size={11} />
-                      <span className="text-[11px] font-bold">{nextTrip.time} {nextTrip.note && <span className="opacity-60 ml-1">@ {nextTrip.location}</span>}</span>
+                      <span className="text-[11px] font-bold">{nextTrip.time}</span>
                     </div>
                   </div>
                 ) : (
-                  <p className="text-xs font-bold opacity-60 italic">無後續行程</p>
+                  <p className="text-xs font-bold opacity-60 italic">無安排行程</p>
                 )}
               </div>
               
@@ -398,7 +394,7 @@ export default function App() {
                   <p className="text-[9px] font-black uppercase tracking-tighter opacity-80">{weather.label}</p>
                 </div>
                 {weather.loading ? (
-                   <div className="w-8 h-8 flex items-center justify-center"><RefreshCw size={20} className="animate-spin opacity-50" /></div>
+                   <RefreshCw size={24} className="animate-spin opacity-50" />
                 ) : (
                    <weather.icon size={36} className={`${weather.iconColor} drop-shadow-md`} />
                 )}
@@ -407,11 +403,11 @@ export default function App() {
 
             <div className="mt-4 pt-3 border-t border-white/10 flex gap-5">
                 <div className="flex items-center gap-1.5">
-                    <Droplets size={12} className="text-blue-200" />
+                    <Droplets size={11} className="text-blue-200" />
                     <span className="text-[10px] font-black">{weather.humidity}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                    <Wind size={12} className="text-blue-200" />
+                    <Wind size={11} className="text-blue-200" />
                     <span className="text-[10px] font-black">{weather.windSpeed}</span>
                 </div>
             </div>
@@ -423,7 +419,7 @@ export default function App() {
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
             <h2 className="text-md font-black flex items-center gap-2 px-1"><Calendar className="text-blue-500" size={18} /> 行程規劃</h2>
             {groupedItinerary.length === 0 ? (
-              <div className="p-12 text-center bg-white rounded-[2.5rem] border border-dashed border-slate-200 text-slate-300 font-black italic">尚無行程</div>
+              <div className="p-12 text-center bg-white rounded-[2.5rem] border border-dashed border-slate-200 text-slate-300 font-black italic">尚無安排</div>
             ) : (
               groupedItinerary.map(([date, items]) => {
                 const dateObj = new Date(date);
@@ -445,11 +441,9 @@ export default function App() {
                               <span className="text-[10px] font-black text-blue-500 leading-none">{item.time}</span>
                             </div>
                             <div className="flex-1">
-                              <h3 className="font-black text-slate-800 text-[14px]">
-                                {item.note || item.location}
-                              </h3>
+                              <h3 className="font-black text-slate-800 text-[14px]">{item.note || item.location}</h3>
                               {item.note && (
-                                <p className="text-slate-400 text-[10px] font-bold mt-0.5 line-clamp-1 italic flex items-center gap-1">
+                                <p className="text-slate-400 text-[10px] font-bold mt-0.5 italic flex items-center gap-1">
                                   <MapPin size={9} /> {item.location}
                                 </p>
                               )}
@@ -458,7 +452,7 @@ export default function App() {
                           <div className="flex gap-0.5 opacity-60 group-hover:opacity-100">
                             <button onClick={() => openEditTrip(item)} className="p-2 text-slate-300 hover:text-blue-500 transition-colors"><Pencil size={15} /></button>
                             <button onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.location)}`, '_blank')} className="p-2 text-blue-500 rounded-xl transition-colors"><Navigation size={15} /></button>
-                            <button onClick={() => askDelete('itinerary', item.id, item.note || item.location)} className="p-2 text-slate-100 hover:text-red-500 transition-colors"><Trash2 size={15} /></button>
+                            <button onClick={() => askDelete('itinerary', item.id, item.note || item.location)} className="p-2 text-pink-400 hover:text-pink-600 transition-colors"><Trash2 size={15} /></button>
                           </div>
                         </div>
                       ))}
@@ -472,7 +466,7 @@ export default function App() {
 
         {activeTab === 'wishlist' && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-            <h2 className="text-md font-black flex items-center gap-2 px-1"><ListTodo className="text-amber-500" size={18} /> 必去必吃</h2>
+            <h2 className="text-md font-black flex items-center gap-2 px-1"><ListTodo className="text-amber-500" size={18} /> 願望清單</h2>
             {groupedWishlist.map(([cat, items]) => items.length > 0 && (
               <div key={cat} className="space-y-3">
                 <div className="flex items-center gap-2 px-1">
@@ -492,12 +486,7 @@ export default function App() {
                         </div>
                       </div>
                       <div className="flex gap-1">
-                        {(cat === '餐廳' || cat === '景點') && (
-                          <button onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.title)}`, '_blank')} className="p-2.5 bg-slate-50 text-amber-600 rounded-xl active:bg-amber-100 transition-colors">
-                            <Navigation size={15} />
-                          </button>
-                        )}
-                        <button onClick={() => askDelete('wishlist', item.id, item.title)} className="p-2.5 text-slate-100 hover:text-red-500 transition-colors"><Trash2 size={15} /></button>
+                        <button onClick={() => askDelete('wishlist', item.id, item.title)} className="p-2.5 text-pink-400 hover:text-pink-600 transition-colors"><Trash2 size={15} /></button>
                       </div>
                     </div>
                   ))}
@@ -510,7 +499,7 @@ export default function App() {
         {activeTab === 'expenses' && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
             <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100">
-               <p className="text-slate-300 text-[9px] font-black uppercase mb-4 tracking-[0.2em] text-center opacity-80">開支統計 (HKD)</p>
+               <p className="text-slate-300 text-[9px] font-black uppercase mb-4 tracking-[0.2em] text-center opacity-80">支出圓盤 (HKD)</p>
                <ExpensePieChart 
                  data={expenseChartData} 
                  totalJPY={totalExpenseJPY} 
@@ -518,9 +507,9 @@ export default function App() {
                />
             </div>
             <div className="space-y-2.5">
-              <h3 className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] px-1">支出細目</h3>
+              <h3 className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] px-1">消費紀錄</h3>
               {expenses.length === 0 ? (
-                 <div className="p-12 text-center text-slate-300 italic font-black bg-white rounded-[2.5rem]">尚無開支</div>
+                 <div className="p-12 text-center text-slate-300 italic font-black bg-white rounded-[2.5rem]">尚無紀錄</div>
               ) : (
                 [...expenses].sort((a,b)=>b.createdAt-a.createdAt).map((item) => {
                   const amountJpy = item.amountInJpy || item.amount;
@@ -540,7 +529,7 @@ export default function App() {
                         <div className="text-right">
                           <p className="font-black text-emerald-600 text-[13px]">HK${amountHkd.toLocaleString()}</p>
                         </div>
-                        <button onClick={() => askDelete('expenses', item.id, item.item)} className="p-2 text-slate-100 hover:text-red-500 transition-colors"><Trash2 size={15} /></button>
+                        <button onClick={() => askDelete('expenses', item.id, item.item)} className="p-2 text-pink-400 hover:text-pink-600 transition-colors"><Trash2 size={15} /></button>
                       </div>
                     </div>
                   );
@@ -551,20 +540,19 @@ export default function App() {
         )}
       </main>
 
-      {/* iPhone 專屬浮動按鈕位置 */}
       <div className="fixed bottom-32 right-6 flex flex-col gap-3 items-end z-40">
         {activeTab === 'itinerary' && (
-          <button onClick={() => { setEditingTripId(null); setNewTrip({ date: '2026-06-12', time: '10:00', location: '', note: '' }); setIsTripModalOpen(true); }} className="w-14 h-14 bg-blue-500 text-white rounded-full shadow-xl flex items-center justify-center active:scale-90 transition-all border-4 border-white animate-in zoom-in">
+          <button onClick={() => { setEditingTripId(null); setNewTrip({ date: '2026-06-12', time: '10:00', location: '', note: '' }); setIsTripModalOpen(true); }} className="w-14 h-14 bg-blue-500 text-white rounded-full shadow-xl flex items-center justify-center active:scale-90 transition-all border-4 border-white">
             <Plus size={32} />
           </button>
         )}
         {activeTab === 'wishlist' && (
-          <button onClick={() => setIsWishlistModalOpen(true)} className="w-14 h-14 bg-amber-400 text-white rounded-full shadow-xl flex items-center justify-center active:scale-90 transition-all border-4 border-white animate-in zoom-in">
+          <button onClick={() => setIsWishlistModalOpen(true)} className="w-14 h-14 bg-amber-400 text-white rounded-full shadow-xl flex items-center justify-center active:scale-90 transition-all border-4 border-white">
             <Plus size={32} />
           </button>
         )}
         {activeTab === 'expenses' && (
-          <button onClick={() => setIsExpenseModalOpen(true)} className="w-14 h-14 bg-emerald-500 text-white rounded-full shadow-xl flex items-center justify-center active:scale-90 transition-all border-4 border-white animate-in zoom-in">
+          <button onClick={() => setIsExpenseModalOpen(true)} className="w-14 h-14 bg-emerald-500 text-white rounded-full shadow-xl flex items-center justify-center active:scale-90 transition-all border-4 border-white">
             <DollarSign size={28} />
           </button>
         )}
@@ -584,16 +572,16 @@ export default function App() {
         </nav>
       </div>
 
-      {/* 彈出層 Modals */}
+      {/* Modals */}
       {deleteConfirm.open && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 animate-in fade-in">
           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setDeleteConfirm({ ...deleteConfirm, open: false })} />
-          <div className="bg-white w-full max-w-sm rounded-[3rem] p-8 shadow-2xl relative z-10 animate-in zoom-in-95 text-center">
-            <h3 className="text-xl font-black text-slate-800 mb-2">確定刪除？</h3>
-            <p className="text-slate-400 text-sm mb-8 leading-relaxed">項目「{deleteConfirm.title}」</p>
+          <div className="bg-white w-full max-w-sm rounded-[3rem] p-8 shadow-2xl relative z-10 text-center animate-in zoom-in-95">
+            <h3 className="text-xl font-black text-slate-800 mb-2">確定要刪除？</h3>
+            <p className="text-slate-400 text-sm mb-8">「{deleteConfirm.title}」</p>
             <div className="grid grid-cols-2 gap-3">
               <button onClick={() => setDeleteConfirm({ ...deleteConfirm, open: false })} className="p-4 bg-slate-50 text-slate-500 rounded-2xl font-black text-sm">取消</button>
-              <button onClick={confirmDelete} className="p-4 bg-red-500 text-white rounded-2xl font-black text-sm shadow-lg">刪除</button>
+              <button onClick={confirmDelete} className="p-4 bg-pink-500 text-white rounded-2xl font-black text-sm shadow-lg">確認刪除</button>
             </div>
           </div>
         </div>
@@ -603,15 +591,15 @@ export default function App() {
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 animate-in fade-in">
           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-md" onClick={() => setIsTripModalOpen(false)} />
           <div className="bg-white w-full max-w-sm rounded-[3rem] p-8 shadow-2xl relative z-10 animate-in zoom-in-95">
-            <div className="mb-6 text-center"><h3 className="text-xl font-black italic uppercase">{editingTripId ? '編輯目的地' : '新增目的地'}</h3></div>
+            <div className="mb-6 text-center font-black uppercase">{editingTripId ? '編輯行程' : '新增目的地'}</div>
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-2">
                 <input type="date" value={newTrip.date} onChange={e => setNewTrip({...newTrip, date: e.target.value})} className="w-full p-4 rounded-xl bg-slate-50 text-xs font-bold border-none" />
                 <input type="time" value={newTrip.time} onChange={e => setNewTrip({...newTrip, time: e.target.value})} className="w-full p-4 rounded-xl bg-slate-50 text-xs font-bold border-none" />
               </div>
-              <input type="text" placeholder="目的地名稱" value={newTrip.location} onChange={e => setNewTrip({...newTrip, location: e.target.value})} className="w-full p-4 rounded-xl bg-slate-50 text-sm font-bold border-none" />
-              <input type="text" placeholder="行程備註 (顯示為主標題)" value={newTrip.note} onChange={e => setNewTrip({...newTrip, note: e.target.value})} className="w-full p-4 rounded-xl bg-slate-50 text-sm font-bold border-none" />
-              <button onClick={saveTrip} className="w-full bg-blue-500 text-white p-4 rounded-xl font-black shadow-lg active:scale-95 transition-all text-md">{editingTripId ? '更新' : '新增'}</button>
+              <input type="text" placeholder="Map 搜尋地點 (如: 札幌市中央區)" value={newTrip.location} onChange={e => setNewTrip({...newTrip, location: e.target.value})} className="w-full p-4 rounded-xl bg-slate-50 text-sm font-bold border-none" />
+              <input type="text" placeholder="顯示名稱 (如: 午餐時間)" value={newTrip.note} onChange={e => setNewTrip({...newTrip, note: e.target.value})} className="w-full p-4 rounded-xl bg-slate-50 text-sm font-bold border-none" />
+              <button onClick={saveTrip} className="w-full bg-blue-500 text-white p-4 rounded-xl font-black shadow-lg">確認儲存</button>
             </div>
           </div>
         </div>
@@ -621,16 +609,16 @@ export default function App() {
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 animate-in fade-in">
           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-md" onClick={() => setIsWishlistModalOpen(false)} />
           <div className="bg-white w-full max-w-sm rounded-[3rem] p-8 shadow-2xl relative z-10 animate-in zoom-in-95">
-            <div className="mb-6 text-center"><h3 className="text-xl font-black italic uppercase tracking-tight">新增心願</h3></div>
+            <div className="mb-6 text-center font-black uppercase">新增願望項目</div>
             <div className="space-y-3">
               <div className="flex gap-2">
-                <input type="text" placeholder="項目名稱" value={newWish.title} onChange={e => setNewWish({...newWish, title: e.target.value})} className="flex-1 p-4 rounded-xl bg-slate-50 border-none text-sm font-bold" />
-                <select value={newWish.category} onChange={e => setNewWish({...newWish, category: e.target.value})} className="p-4 rounded-xl bg-slate-50 border-none text-xs font-black text-amber-600">
+                <input type="text" placeholder="項目名稱" value={newWish.title} onChange={e => setNewWish({...newWish, title: e.target.value})} className="flex-1 p-4 rounded-xl bg-slate-50 text-sm font-bold border-none" />
+                <select value={newWish.category} onChange={e => setNewWish({...newWish, category: e.target.value})} className="p-4 rounded-xl bg-slate-50 text-xs font-black border-none">
                   <option>餐廳</option><option>景點</option><option>購物</option><option>其他</option>
                 </select>
               </div>
-              <input type="text" placeholder="補充資訊" value={newWish.note} onChange={e => setNewWish({...newWish, note: e.target.value})} className="w-full p-4 rounded-xl bg-slate-50 border-none text-sm font-bold" />
-              <button onClick={() => addItem('wishlist', newWish, () => setNewWish({title:'', category:'餐廳', note:'', completed:false}), setIsWishlistModalOpen)} className="w-full bg-amber-400 text-white p-4 rounded-xl font-black shadow-lg uppercase">加入清單</button>
+              <input type="text" placeholder="筆記" value={newWish.note} onChange={e => setNewWish({...newWish, note: e.target.value})} className="w-full p-4 rounded-xl bg-slate-50 text-sm font-bold border-none" />
+              <button onClick={() => addItem('wishlist', newWish, () => setNewWish({title:'', category:'餐廳', note:'', completed:false}), setIsWishlistModalOpen)} className="w-full bg-amber-400 text-white p-4 rounded-xl font-black shadow-lg">加入</button>
             </div>
           </div>
         </div>
@@ -640,19 +628,19 @@ export default function App() {
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 animate-in fade-in">
           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-md" onClick={() => setIsExpenseModalOpen(false)} />
           <div className="bg-white w-full max-w-sm rounded-[3rem] p-8 shadow-2xl relative z-10 animate-in zoom-in-95">
-            <div className="mb-6 text-center"><h3 className="text-xl font-black italic uppercase tracking-tight">紀錄開支</h3></div>
+            <div className="mb-6 text-center font-black uppercase">紀錄消費</div>
             <div className="space-y-3">
-              <input type="text" placeholder="支出內容" value={newExpense.item} onChange={e => setNewExpense({...newExpense, item: e.target.value})} className="w-full p-4 rounded-xl bg-slate-50 border-none text-sm font-bold" />
+              <input type="text" placeholder="項目" value={newExpense.item} onChange={e => setNewExpense({...newExpense, item: e.target.value})} className="w-full p-4 rounded-xl bg-slate-50 text-sm font-bold border-none" />
               <div className="flex gap-2">
                 <div className="flex-1 relative">
-                  <input type="number" placeholder="金額" value={newExpense.amount} onChange={e => setNewExpense({...newExpense, amount: e.target.value})} className="w-full p-4 rounded-xl bg-slate-50 border-none text-sm font-bold" />
-                  <button onClick={() => setNewExpense(p => ({ ...p, currency: p.currency === 'JPY' ? 'HKD' : 'JPY' }))} className="absolute right-2 top-2 bottom-2 px-2 bg-white text-[9px] font-black text-emerald-600 rounded-lg shadow-sm">{newExpense.currency}</button>
+                  <input type="number" placeholder="金額" value={newExpense.amount} onChange={e => setNewExpense({...newExpense, amount: e.target.value})} className="w-full p-4 rounded-xl bg-slate-50 text-sm font-bold border-none" />
+                  <button onClick={() => setNewExpense(p => ({ ...p, currency: p.currency === 'JPY' ? 'HKD' : 'JPY' }))} className="absolute right-2 top-2 bottom-2 px-2 bg-white text-[9px] font-black rounded-lg border">{newExpense.currency}</button>
                 </div>
-                <select value={newExpense.category} onChange={e => setNewExpense({...newExpense, category: e.target.value})} className="p-4 rounded-xl bg-slate-50 border-none text-xs font-bold text-slate-600">
+                <select value={newExpense.category} onChange={e => setNewExpense({...newExpense, category: e.target.value})} className="p-4 rounded-xl bg-slate-50 text-xs font-bold border-none">
                   <option>飲食</option><option>交通</option><option>購物</option><option>住宿</option><option>其他</option>
                 </select>
               </div>
-              <button onClick={() => addItem('expenses', { item: newExpense.item, amountInJpy: newExpense.currency === 'JPY' ? Math.round(Number(newExpense.amount)) : Math.round(Number(newExpense.amount) * HKD_TO_JPY), inputAmount: Number(newExpense.amount), inputCurrency: newExpense.currency, category: newExpense.category }, () => setNewExpense({...newExpense, item:'', amount:''}), setIsExpenseModalOpen)} className="w-full bg-emerald-500 text-white p-4 rounded-xl font-black shadow-lg uppercase">確認記帳</button>
+              <button onClick={() => addItem('expenses', { item: newExpense.item, amountInJpy: newExpense.currency === 'JPY' ? Math.round(Number(newExpense.amount)) : Math.round(Number(newExpense.amount) * HKD_TO_JPY), category: newExpense.category }, () => setNewExpense({...newExpense, item:'', amount:''}), setIsExpenseModalOpen)} className="w-full bg-emerald-500 text-white p-4 rounded-xl font-black shadow-lg">確認</button>
             </div>
           </div>
         </div>
