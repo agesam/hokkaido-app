@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from 'firebase/auth';
 import { getFirestore, collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc, query, setDoc } from 'firebase/firestore';
-import { MapPin, Plus, DollarSign, Cloud, Calendar, Navigation, Trash2, Heart, Camera, Sun, Wind, Thermometer, Clock, PieChart, ArrowLeftRight, X, Droplets, CloudRain, Sunrise, Sunset, ReceiptText, Map, RefreshCw, CloudSnow, CloudLightning, ChevronRight, Pencil, CheckCircle2, Circle, Utensils, ShoppingBag, Palmtree, ListTodo, AlertTriangle } from 'lucide-react';
+import { MapPin, Plus, DollarSign, Cloud, Calendar, Navigation, Trash2, Heart, Camera, Sun, Wind, Thermometer, Clock, PieChart, ArrowLeftRight, X, Droplets, CloudRain, Sunrise, Sunset, FileText, Map, RefreshCw, CloudSnow, CloudLightning, ChevronRight, Pencil, CheckCircle2, Circle, Utensils, ShoppingBag, Palmtree, ListTodo, AlertTriangle } from 'lucide-react';
 
 /**
  * 💡 iPhone 免費安裝小貼士：
@@ -668,7 +668,7 @@ export default function App() {
           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-md" onClick={() => setIsExpenseModalOpen(false)} />
           <div className="bg-white w-full max-w-sm rounded-[3.5rem] p-10 shadow-2xl relative z-10 animate-in zoom-in-95">
             <button onClick={() => setIsExpenseModalOpen(false)} className="absolute top-8 right-8 p-2 bg-slate-100 rounded-full text-slate-400"><X size={24} /></button>
-            <div className="mb-8 text-center"><ReceiptText className="text-emerald-500 mx-auto mb-4" size={36} /><h3 className="text-2xl font-black italic uppercase tracking-tight">記帳開支</h3></div>
+            <div className="mb-8 text-center"><FileText className="text-emerald-500 mx-auto mb-4" size={36} /><h3 className="text-2xl font-black italic uppercase tracking-tight">記帳開支</h3></div>
             <div className="space-y-4">
               <input type="text" placeholder="買了什麼？" value={newExpense.item} onChange={e => setNewExpense({...newExpense, item: e.target.value})} className="w-full p-4 rounded-2xl bg-slate-50 border-none text-sm font-bold" />
               <div className="flex gap-2">
