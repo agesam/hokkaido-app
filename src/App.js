@@ -57,8 +57,8 @@ const ExpensePieChart = ({ data, totalHKD }) => {
     </div>
   );
   return (
-    <div className="flex flex-col items-center gap-8 py-2 w-full">
-      <div className="relative w-40 h-40">
+    <div className="flex flex-col items-center gap-6 py-2 w-full">
+      <div className="relative w-36 h-36">
         <svg viewBox="-1 -1 2 2" className="transform -rotate-90 w-full h-full">
           {data.map((slice, i) => {
             if (slice.value === 0) return null;
@@ -75,15 +75,15 @@ const ExpensePieChart = ({ data, totalHKD }) => {
           <circle cx="0" cy="0" r="0.78" fill="white" />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
-          <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest mb-0.5">總開支 (HKD)</span>
-          <span className="text-xl font-black text-slate-800 leading-none">HK${totalHKD.toLocaleString()}</span>
+          <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest mb-0.5">總開支</span>
+          <span className="text-lg font-black text-slate-800 leading-none">HK${totalHKD.toLocaleString()}</span>
         </div>
       </div>
-      <div className="flex flex-wrap justify-center gap-x-4 gap-y-1.5 px-2">
+      <div className="flex flex-wrap justify-center gap-x-3 gap-y-1.5 px-2">
         {data.map((slice, i) => slice.value > 0 && (
           <div key={i} className="flex items-center gap-1">
             <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: slice.color }} />
-            <span className="text-[10px] font-bold text-slate-400">{slice.name}</span>
+            <span className="text-[9px] font-bold text-slate-400">{slice.name}</span>
           </div>
         ))}
       </div>
@@ -117,7 +117,6 @@ export default function App() {
   const [newExpense, setNewExpense] = useState({ item: '', amount: '', category: '飲食', currency: 'JPY', date: new Date().toISOString().split('T')[0] });
   const [newWish, setNewWish] = useState({ title: '', category: '餐廳', note: '', completed: false });
 
-  // 1. 初始化 Meta 標籤，防止 iOS 縮放
   useEffect(() => {
     const meta = document.createElement('meta');
     meta.name = 'viewport';
@@ -293,31 +292,20 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-50 pb-32 text-slate-800 font-sans relative overflow-x-hidden pt-6">
       
-      {/* 修正 iOS 縮放的 CSS */}
       <style>{`
-        /* 避免 iOS 在 input 聚焦時縮放頁面 (強制 16px 但縮小顯示) */
         @media screen and (-webkit-min-device-pixel-ratio: 0) {
-          input, select, textarea {
-            font-size: 16px !important;
-          }
-          input[type="text"], input[type="number"], input[type="date"], input[type="time"], select {
-            transform: scale(0.875); /* 使 16px 看起來像 14px */
-            transform-origin: left center;
-            width: 114.3% !important; /* 補償縮放後的寬度 */
-            margin-right: -14.3%;
-          }
+          input, select, textarea { font-size: 16px !important; }
         }
-        /* 如果不想影響佈局，最簡單的方法是直接讓 input 變 16px 並微調 Padding */
-        input, select {
-          font-size: 16px !important;
-        }
+        input, select { font-size: 16px !important; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
 
       <header className="px-5 mb-4 max-w-md mx-auto">
-          <div className="bg-gradient-to-br from-blue-600 to-indigo-600 rounded-[2.5rem] p-5 text-white shadow-xl shadow-blue-100 relative overflow-hidden active:scale-95 transition-transform cursor-pointer" onClick={() => navigator.geolocation?.getCurrentPosition(pos => fetchWeather(pos.coords.latitude, pos.coords.longitude))}>
+          <div className="bg-gradient-to-br from-blue-600 to-indigo-600 rounded-[2.5rem] p-5 text-white shadow-xl shadow-blue-100 relative overflow-hidden" onClick={() => navigator.geolocation?.getCurrentPosition(pos => fetchWeather(pos.coords.latitude, pos.coords.longitude))}>
             <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl" />
             <div className="flex justify-between items-center mb-4 relative z-10">
-               <div className="flex items-center gap-1.5 bg-black/10 px-2.5 py-1 rounded-full backdrop-blur-sm border border-white/5"><MapPin size={10} className="text-blue-200" /><span className="text-[9px] font-black uppercase tracking-[0.1em]">{weather.locationName}</span>{weather.loading && <RefreshCw size={8} className="animate-spin" />}</div>
+               <div className="flex items-center gap-1.5 bg-black/10 px-2.5 py-1 rounded-full backdrop-blur-sm border border-white/5"><MapPin size={10} className="text-blue-200" /><span className="text-[9px] font-black uppercase tracking-[0.1em]">{weather.locationName}</span></div>
                <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full ${tripStatus.color} backdrop-blur-md border shadow-sm`}><tripStatus.icon size={11} /><span className="text-[10px] font-black tracking-tight">{tripStatus.text}</span></div>
             </div>
             <div className="flex justify-between items-center relative z-10">
@@ -330,11 +318,6 @@ export default function App() {
                 {weather.loading ? <RefreshCw size={24} className="animate-spin opacity-50" /> : <weather.icon size={36} className={`${weather.iconColor} drop-shadow-md`} />}
               </div>
             </div>
-            <div className="mt-4 pt-3 border-t border-white/10 flex gap-4">
-                <div className="flex items-center gap-1.5"><Droplets size={11} className="text-blue-200" /><span className="text-[10px] font-black">{weather.humidity}</span></div>
-                <div className="flex items-center gap-1.5"><Wind size={11} className="text-blue-200" /><span className="text-[10px] font-black">{weather.windSpeed}</span></div>
-                <div className="flex items-center gap-1.5 border-l border-white/10 pl-4"><Sunset size={11} className="text-amber-200" /><span className="text-[10px] font-black">{weather.sunset}</span></div>
-            </div>
           </div>
       </header>
 
@@ -346,7 +329,7 @@ export default function App() {
               groupedItinerary.map(([date, items]) => (
                 <div key={date} className="space-y-3">
                   <div className="flex items-center gap-3 px-1">
-                    <div className={`px-3 py-1 rounded-xl font-black text-xs ${new Date().toDateString() === new Date(date).toDateString() ? 'bg-blue-500 text-white shadow-md' : 'bg-slate-200/50 text-slate-500'}`}>{new Date(date).toLocaleDateString('zh-HK', { month: 'short', day: 'numeric' })}</div>
+                    <div className={`px-3 py-1 rounded-xl font-black text-xs ${new Date().toDateString() === new Date(date).toDateString() ? 'bg-blue-500 text-white shadow-md' : 'bg-slate-200 text-slate-500'}`}>{new Date(date).toLocaleDateString('zh-HK', { month: 'short', day: 'numeric' })}</div>
                     <div className="h-px flex-1 bg-slate-200" /><span className="text-[10px] font-black text-slate-300 uppercase italic">{new Date(date).toLocaleDateString('zh-HK', { weekday: 'short' })}</span>
                   </div>
                   <div className="space-y-2.5">
@@ -385,40 +368,49 @@ export default function App() {
         {activeTab === 'expenses' && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
             <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100">
-               <p className="text-slate-300 text-[9px] font-black uppercase mb-4 tracking-[0.2em] text-center opacity-80">支出分析 (HKD)</p>
+               <p className="text-slate-300 text-[8px] font-black uppercase mb-4 tracking-[0.2em] text-center opacity-80">支出類別佔比 (HKD)</p>
                <ExpensePieChart data={expenseChartData} totalHKD={totalExpenseHKD} />
             </div>
             
             <div className="space-y-6">
-              <h2 className="text-md font-black flex items-center gap-2 px-1"><DollarSign className="text-emerald-500" size={18} /> 消費紀錄</h2>
+              <h2 className="text-md font-black flex items-center gap-2 px-1"><DollarSign className="text-emerald-500" size={18} /> 消費明細</h2>
               {groupedExpenses.length === 0 ? (<div className="p-12 text-center text-slate-300 italic font-black bg-white rounded-[2.5rem]">尚無紀錄</div>) : (
                 groupedExpenses.map(([date, items]) => (
                   <div key={date} className="space-y-3">
-                    <div className="flex items-center gap-3 px-1">
-                      <div className="px-3 py-1 rounded-xl bg-slate-100 text-slate-500 font-black text-xs">{date}</div>
-                      <div className="h-px flex-1 bg-slate-100" />
-                      <span className="text-[10px] font-bold text-slate-400">當日小計: HK${Math.round(items.reduce((s, i) => s + (i.amountInJpy || 0), 0) * JPY_TO_HKD)}</span>
+                    {/* Date Header: Fixed overlapping issues by allowing wrapping on tiny screens */}
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 px-1">
+                      <div className="flex items-center gap-2 flex-1">
+                         <div className="px-3 py-1 rounded-xl bg-slate-200/60 text-slate-600 font-black text-[10px] whitespace-nowrap">{date}</div>
+                         <div className="h-px flex-1 bg-slate-100" />
+                      </div>
+                      <span className="text-[10px] font-black text-slate-400 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100 inline-block self-end sm:self-auto uppercase tracking-tighter">
+                         小計 HK${Math.round(items.reduce((s, i) => s + (i.amountInJpy || 0), 0) * JPY_TO_HKD).toLocaleString()}
+                      </span>
                     </div>
-                    <div className="space-y-2.5">
+
+                    <div className="space-y-2">
                       {items.map((item) => (
-                        <div key={item.id} className="bg-white p-4 rounded-[2rem] shadow-sm flex justify-between items-center border border-slate-50 group active:scale-98 transition-transform">
-                          <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center text-md shadow-inner">
+                        <div key={item.id} className="bg-white p-4 rounded-[1.8rem] shadow-sm border border-slate-50 flex flex-col xs:flex-row xs:items-center justify-between gap-3 group active:scale-[0.98] transition-all">
+                          {/* Item Details */}
+                          <div className="flex items-center gap-3 overflow-hidden">
+                            <div className="w-10 h-10 min-w-[40px] rounded-xl bg-slate-50 flex items-center justify-center text-lg shadow-inner">
                               {item.category === '飲食' ? '🍱' : item.category === '交通' ? '🚆' : item.category === '購物' ? '🛍️' : item.category === '住宿' ? '🏨' : '🏷️'}
                             </div>
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <p className="font-black text-slate-800 text-[13px] leading-tight">{item.item}</p>
-                                <span className="px-1.5 py-0.5 rounded-md bg-slate-100 text-[8px] font-black text-slate-400 uppercase tracking-tighter">{item.category}</span>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <p className="font-black text-slate-800 text-sm leading-tight truncate">{item.item}</p>
+                                <span className="px-1.5 py-0.5 rounded-md bg-slate-100 text-[8px] font-black text-slate-400 uppercase">{item.category}</span>
                               </div>
-                              <p className="text-[9px] text-slate-300 font-bold uppercase mt-0.5 tracking-wider">¥{Math.round(item.amountInJpy || 0).toLocaleString()}</p>
+                              <p className="text-[10px] text-slate-300 font-bold uppercase mt-0.5 tracking-wider">¥{Math.round(item.amountInJpy || 0).toLocaleString()}</p>
                             </div>
                           </div>
-                          <div className="flex items-center gap-1">
-                            <p className="font-black text-emerald-600 text-[13px] mr-2">HK${Math.round((item.amountInJpy || 0) * JPY_TO_HKD).toLocaleString()}</p>
-                            <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button onClick={() => openEditExpense(item)} className="p-2 text-slate-300 hover:text-blue-500 transition-colors"><Pencil size={15} /></button>
-                              <button onClick={() => setDeleteConfirm({ open: true, col: 'expenses', id: item.id, title: item.item })} className="p-2 text-pink-400 hover:text-pink-600 transition-colors"><Trash2 size={15} /></button>
+
+                          {/* Price & Actions */}
+                          <div className="flex items-center justify-between xs:justify-end gap-3 border-t xs:border-t-0 border-slate-50 pt-2 xs:pt-0">
+                            <p className="font-black text-emerald-600 text-sm">HK${Math.round((item.amountInJpy || 0) * JPY_TO_HKD).toLocaleString()}</p>
+                            <div className="flex items-center gap-0.5">
+                              <button onClick={() => openEditExpense(item)} className="p-2 text-slate-300 hover:text-blue-500 transition-colors"><Pencil size={14} /></button>
+                              <button onClick={() => setDeleteConfirm({ open: true, col: 'expenses', id: item.id, title: item.item })} className="p-2 text-pink-300 hover:text-pink-600 transition-colors"><Trash2 size={14} /></button>
                             </div>
                           </div>
                         </div>
@@ -468,9 +460,9 @@ export default function App() {
           <div className="bg-white w-full max-w-sm rounded-[3rem] p-8 shadow-2xl relative z-10 animate-in zoom-in-95">
             <div className="mb-6 text-center font-black uppercase tracking-widest text-xs text-slate-400">{editingTripId ? '編輯行程' : '新增目的地'}</div>
             <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-2"><input type="date" value={newTrip.date} onChange={e => setNewTrip({...newTrip, date: e.target.value})} className="w-full p-4 rounded-xl bg-slate-50 font-bold outline-none focus:ring-2 focus:ring-blue-500" style={{ fontSize: '16px' }} /><input type="time" value={newTrip.time} onChange={e => setNewTrip({...newTrip, time: e.target.value})} className="w-full p-4 rounded-xl bg-slate-50 font-bold outline-none focus:ring-2 focus:ring-blue-500" style={{ fontSize: '16px' }} /></div>
-              <input type="text" placeholder="地點" value={newTrip.location} onChange={e => setNewTrip({...newTrip, location: e.target.value})} className="w-full p-4 rounded-xl bg-slate-50 font-bold outline-none focus:ring-2 focus:ring-blue-500" style={{ fontSize: '16px' }} />
-              <input type="text" placeholder="顯示名稱 / 筆記" value={newTrip.note} onChange={e => setNewTrip({...newTrip, note: e.target.value})} className="w-full p-4 rounded-xl bg-slate-50 font-bold outline-none focus:ring-2 focus:ring-blue-500" style={{ fontSize: '16px' }} />
+              <div className="grid grid-cols-2 gap-2"><input type="date" value={newTrip.date} onChange={e => setNewTrip({...newTrip, date: e.target.value})} className="w-full p-4 rounded-xl bg-slate-50 font-bold outline-none focus:ring-2 focus:ring-blue-500" /><input type="time" value={newTrip.time} onChange={e => setNewTrip({...newTrip, time: e.target.value})} className="w-full p-4 rounded-xl bg-slate-50 font-bold outline-none focus:ring-2 focus:ring-blue-500" /></div>
+              <input type="text" placeholder="地點" value={newTrip.location} onChange={e => setNewTrip({...newTrip, location: e.target.value})} className="w-full p-4 rounded-xl bg-slate-50 font-bold outline-none focus:ring-2 focus:ring-blue-500" />
+              <input type="text" placeholder="顯示名稱 / 筆記" value={newTrip.note} onChange={e => setNewTrip({...newTrip, note: e.target.value})} className="w-full p-4 rounded-xl bg-slate-50 font-bold outline-none focus:ring-2 focus:ring-blue-500" />
               <button onClick={saveTrip} className="w-full bg-blue-500 text-white p-4 rounded-xl font-black shadow-lg mt-2">確認儲存</button>
             </div>
           </div>
@@ -483,8 +475,8 @@ export default function App() {
           <div className="bg-white w-full max-w-sm rounded-[3rem] p-8 shadow-2xl relative z-10 animate-in zoom-in-95">
             <div className="mb-6 text-center font-black uppercase tracking-widest text-xs text-slate-400">{editingWishId ? '編輯願望' : '新增願望'}</div>
             <div className="space-y-3">
-              <div className="flex gap-2"><input type="text" placeholder="項目名稱" value={newWish.title} onChange={e => setNewWish({...newWish, title: e.target.value})} className="flex-1 p-4 rounded-xl bg-slate-50 font-bold outline-none focus:ring-2 focus:ring-amber-500" style={{ fontSize: '16px' }} /><select value={newWish.category} onChange={e => setNewWish({...newWish, category: e.target.value})} className="p-4 rounded-xl bg-slate-50 font-black outline-none" style={{ fontSize: '16px' }}><option>餐廳</option><option>景點</option><option>購物</option><option>其他</option></select></div>
-              <input type="text" placeholder="筆記" value={newWish.note} onChange={e => setNewWish({...newWish, note: e.target.value})} className="w-full p-4 rounded-xl bg-slate-50 font-bold outline-none focus:ring-2 focus:ring-amber-500" style={{ fontSize: '16px' }} />
+              <div className="flex gap-2"><input type="text" placeholder="項目名稱" value={newWish.title} onChange={e => setNewWish({...newWish, title: e.target.value})} className="flex-1 p-4 rounded-xl bg-slate-50 font-bold outline-none focus:ring-2 focus:ring-amber-500" /><select value={newWish.category} onChange={e => setNewWish({...newWish, category: e.target.value})} className="p-4 rounded-xl bg-slate-50 font-black outline-none"><option>餐廳</option><option>景點</option><option>購物</option><option>其他</option></select></div>
+              <input type="text" placeholder="筆記" value={newWish.note} onChange={e => setNewWish({...newWish, note: e.target.value})} className="w-full p-4 rounded-xl bg-slate-50 font-bold outline-none focus:ring-2 focus:ring-amber-500" />
               <button onClick={saveWish} className="w-full bg-amber-400 text-white p-4 rounded-xl font-black shadow-lg mt-2">確認儲存</button>
             </div>
           </div>
@@ -497,14 +489,14 @@ export default function App() {
           <div className="bg-white w-full max-w-sm rounded-[3rem] p-8 shadow-2xl relative z-10 animate-in zoom-in-95">
             <div className="mb-6 text-center font-black uppercase tracking-widest text-xs text-slate-400">{editingExpenseId ? '編輯消費' : '紀錄消費'}</div>
             <div className="space-y-3">
-              <input type="date" value={newExpense.date} onChange={e => setNewExpense({...newExpense, date: e.target.value})} className="w-full p-4 rounded-xl bg-slate-50 font-bold outline-none focus:ring-2 focus:ring-emerald-500 mb-2" style={{ fontSize: '16px' }} />
-              <input type="text" placeholder="消費項目 (如: 拉麵)" value={newExpense.item} onChange={e => setNewExpense({...newExpense, item: e.target.value})} className="w-full p-4 rounded-xl bg-slate-50 font-bold outline-none focus:ring-2 focus:ring-emerald-500" style={{ fontSize: '16px' }} />
+              <input type="date" value={newExpense.date} onChange={e => setNewExpense({...newExpense, date: e.target.value})} className="w-full p-4 rounded-xl bg-slate-50 font-bold outline-none focus:ring-2 focus:ring-emerald-500 mb-2" />
+              <input type="text" placeholder="消費項目 (如: 拉麵)" value={newExpense.item} onChange={e => setNewExpense({...newExpense, item: e.target.value})} className="w-full p-4 rounded-xl bg-slate-50 font-bold outline-none focus:ring-2 focus:ring-emerald-500" />
               <div className="flex gap-2">
                 <div className="flex-1 relative">
-                  <input type="number" placeholder="金額" value={newExpense.amount} onChange={e => setNewExpense({...newExpense, amount: e.target.value})} className="w-full p-4 rounded-xl bg-slate-50 font-bold outline-none focus:ring-2 focus:ring-emerald-500" style={{ fontSize: '16px' }} />
+                  <input type="number" placeholder="金額" value={newExpense.amount} onChange={e => setNewExpense({...newExpense, amount: e.target.value})} className="w-full p-4 rounded-xl bg-slate-50 font-bold outline-none focus:ring-2 focus:ring-emerald-500" />
                   <button onClick={() => setNewExpense(p => ({ ...p, currency: p.currency === 'JPY' ? 'HKD' : 'JPY' }))} className="absolute right-2 top-2 bottom-2 px-2 bg-white text-[9px] font-black rounded-lg border">{newExpense.currency}</button>
                 </div>
-                <select value={newExpense.category} onChange={e => setNewExpense({...newExpense, category: e.target.value})} className="p-4 rounded-xl bg-slate-50 font-bold outline-none" style={{ fontSize: '16px' }}><option>飲食</option><option>交通</option><option>購物</option><option>住宿</option><option>其他</option></select>
+                <select value={newExpense.category} onChange={e => setNewExpense({...newExpense, category: e.target.value})} className="p-4 rounded-xl bg-slate-50 font-bold outline-none"><option>飲食</option><option>交通</option><option>購物</option><option>住宿</option><option>其他</option></select>
               </div>
               <button onClick={saveExpense} className="w-full bg-emerald-500 text-white p-4 rounded-xl font-black shadow-lg mt-2">確認儲存</button>
             </div>
