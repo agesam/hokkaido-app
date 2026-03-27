@@ -117,6 +117,14 @@ export default function App() {
   const [newExpense, setNewExpense] = useState({ item: '', amount: '', category: '飲食', currency: 'JPY', date: new Date().toISOString().split('T')[0] });
   const [newWish, setNewWish] = useState({ title: '', category: '餐廳', note: '', completed: false });
 
+  // 1. 初始化 Meta 標籤，防止 iOS 縮放
+  useEffect(() => {
+    const meta = document.createElement('meta');
+    meta.name = 'viewport';
+    meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
+    document.getElementsByTagName('head')[0].appendChild(meta);
+  }, []);
+
   const tripStatus = useMemo(() => {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -248,17 +256,6 @@ export default function App() {
     setEditingExpenseId(item.id); setIsExpenseModalOpen(true); 
   };
 
-  const addItem = async (colName, data) => {
-    if (!user) return;
-    try {
-      await addDoc(collection(db, 'artifacts', appId, 'public', 'data', colName), {
-        ...data,
-        createdAt: Date.now(),
-        userId: user.uid
-      });
-    } catch (e) { console.error(e); }
-  };
-
   const saveTrip = async () => {
     if (!user) return;
     const ref = editingTripId ? doc(db, 'artifacts', appId, 'public', 'data', 'itinerary', editingTripId) : collection(db, 'artifacts', appId, 'public', 'data', 'itinerary');
@@ -273,38 +270,15 @@ export default function App() {
     setNewWish({ title: '', category: '餐廳', note: '', completed: false }); setEditingWishId(null); setIsWishlistModalOpen(false);
   };
 
-  // 修復後的 saveExpense 函數
   const saveExpense = async () => {
     if (!user || !newExpense.item || !newExpense.amount) return;
-    
-    // 定義計算後的日圓金額，解決 amountInJpy is not defined 問題
-    const calculatedJpy = newExpense.currency === 'JPY' 
-      ? Math.round(Number(newExpense.amount)) 
-      : Math.round(Number(newExpense.amount) * HKD_TO_JPY); // 如果輸入港幣，這裡假設您的 HKD_TO_JPY 是港幣轉日圓的係數
-
-    const expenseData = { 
-      item: newExpense.item, 
-      amountInJpy: calculatedJpy, 
-      category: newExpense.category, 
-      date: newExpense.date, 
-      updatedAt: Date.now() 
-    };
-
+    const calculatedJpy = newExpense.currency === 'JPY' ? Math.round(Number(newExpense.amount)) : Math.round(Number(newExpense.amount) * HKD_TO_JPY);
+    const expenseData = { item: newExpense.item, amountInJpy: calculatedJpy, category: newExpense.category, date: newExpense.date, updatedAt: Date.now() };
     try {
-      const ref = editingExpenseId 
-        ? doc(db, 'artifacts', appId, 'public', 'data', 'expenses', editingExpenseId) 
-        : collection(db, 'artifacts', appId, 'public', 'data', 'expenses');
-        
-      editingExpenseId 
-        ? await updateDoc(ref, expenseData) 
-        : await addDoc(ref, { ...expenseData, createdAt: Date.now(), userId: user.uid });
-        
-      setNewExpense({ item: '', amount: '', category: '飲食', currency: 'JPY', date: new Date().toISOString().split('T')[0] }); 
-      setEditingExpenseId(null); 
-      setIsExpenseModalOpen(false);
-    } catch (e) {
-      console.error("Save expense failed:", e);
-    }
+      const ref = editingExpenseId ? doc(db, 'artifacts', appId, 'public', 'data', 'expenses', editingExpenseId) : collection(db, 'artifacts', appId, 'public', 'data', 'expenses');
+      editingExpenseId ? await updateDoc(ref, expenseData) : await addDoc(ref, { ...expenseData, createdAt: Date.now(), userId: user.uid });
+      setNewExpense({ item: '', amount: '', category: '飲食', currency: 'JPY', date: new Date().toISOString().split('T')[0] }); setEditingExpenseId(null); setIsExpenseModalOpen(false);
+    } catch (e) { console.error(e); }
   };
 
   const confirmDelete = async () => {
@@ -319,6 +293,26 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-50 pb-32 text-slate-800 font-sans relative overflow-x-hidden pt-6">
       
+      {/* 修正 iOS 縮放的 CSS */}
+      <style>{`
+        /* 避免 iOS 在 input 聚焦時縮放頁面 (強制 16px 但縮小顯示) */
+        @media screen and (-webkit-min-device-pixel-ratio: 0) {
+          input, select, textarea {
+            font-size: 16px !important;
+          }
+          input[type="text"], input[type="number"], input[type="date"], input[type="time"], select {
+            transform: scale(0.875); /* 使 16px 看起來像 14px */
+            transform-origin: left center;
+            width: 114.3% !important; /* 補償縮放後的寬度 */
+            margin-right: -14.3%;
+          }
+        }
+        /* 如果不想影響佈局，最簡單的方法是直接讓 input 變 16px 並微調 Padding */
+        input, select {
+          font-size: 16px !important;
+        }
+      `}</style>
+
       <header className="px-5 mb-4 max-w-md mx-auto">
           <div className="bg-gradient-to-br from-blue-600 to-indigo-600 rounded-[2.5rem] p-5 text-white shadow-xl shadow-blue-100 relative overflow-hidden active:scale-95 transition-transform cursor-pointer" onClick={() => navigator.geolocation?.getCurrentPosition(pos => fetchWeather(pos.coords.latitude, pos.coords.longitude))}>
             <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl" />
@@ -438,12 +432,14 @@ export default function App() {
         )}
       </main>
 
+      {/* Floating Action Buttons */}
       <div className="fixed bottom-32 right-6 flex flex-col gap-3 items-end z-40">
         {activeTab === 'itinerary' && <button onClick={() => { setEditingTripId(null); setNewTrip({ date: '2026-06-12', time: '10:00', location: '', note: '' }); setIsTripModalOpen(true); }} className="w-14 h-14 bg-blue-500 text-white rounded-full shadow-xl flex items-center justify-center active:scale-90 transition-all border-4 border-white"><Plus size={32} /></button>}
         {activeTab === 'wishlist' && <button onClick={() => { setEditingWishId(null); setNewWish({ title: '', category: '餐廳', note: '', completed: false }); setIsWishlistModalOpen(true); }} className="w-14 h-14 bg-amber-400 text-white rounded-full shadow-xl flex items-center justify-center active:scale-90 transition-all border-4 border-white"><Plus size={32} /></button>}
         {activeTab === 'expenses' && <button onClick={() => { setEditingExpenseId(null); setNewExpense({ item: '', amount: '', category: '飲食', currency: 'JPY', date: new Date().toISOString().split('T')[0] }); setIsExpenseModalOpen(true); }} className="w-14 h-14 bg-emerald-500 text-white rounded-full shadow-xl flex items-center justify-center active:scale-90 transition-all border-4 border-white"><Plus size={28} /></button>}
       </div>
 
+      {/* Bottom Navigation */}
       <div className="fixed bottom-0 left-0 right-0 p-6 z-50 pointer-events-none">
         <nav className="max-w-[300px] mx-auto bg-white/95 backdrop-blur-xl shadow-2xl rounded-[2.5rem] p-1.5 flex justify-around items-center border border-white/50 pointer-events-auto">
           {[
@@ -470,12 +466,12 @@ export default function App() {
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 animate-in fade-in">
           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-md" onClick={() => setIsTripModalOpen(false)} />
           <div className="bg-white w-full max-w-sm rounded-[3rem] p-8 shadow-2xl relative z-10 animate-in zoom-in-95">
-            <div className="mb-6 text-center font-black uppercase">{editingTripId ? '編輯行程' : '新增目的地'}</div>
+            <div className="mb-6 text-center font-black uppercase tracking-widest text-xs text-slate-400">{editingTripId ? '編輯行程' : '新增目的地'}</div>
             <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-2"><input type="date" value={newTrip.date} onChange={e => setNewTrip({...newTrip, date: e.target.value})} className="w-full p-4 rounded-xl bg-slate-50 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500" /><input type="time" value={newTrip.time} onChange={e => setNewTrip({...newTrip, time: e.target.value})} className="w-full p-4 rounded-xl bg-slate-50 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500" /></div>
-              <input type="text" placeholder="地點" value={newTrip.location} onChange={e => setNewTrip({...newTrip, location: e.target.value})} className="w-full p-4 rounded-xl bg-slate-50 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500" />
-              <input type="text" placeholder="顯示名稱 / 筆記" value={newTrip.note} onChange={e => setNewTrip({...newTrip, note: e.target.value})} className="w-full p-4 rounded-xl bg-slate-50 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500" />
-              <button onClick={saveTrip} className="w-full bg-blue-500 text-white p-4 rounded-xl font-black shadow-lg">確認儲存</button>
+              <div className="grid grid-cols-2 gap-2"><input type="date" value={newTrip.date} onChange={e => setNewTrip({...newTrip, date: e.target.value})} className="w-full p-4 rounded-xl bg-slate-50 font-bold outline-none focus:ring-2 focus:ring-blue-500" style={{ fontSize: '16px' }} /><input type="time" value={newTrip.time} onChange={e => setNewTrip({...newTrip, time: e.target.value})} className="w-full p-4 rounded-xl bg-slate-50 font-bold outline-none focus:ring-2 focus:ring-blue-500" style={{ fontSize: '16px' }} /></div>
+              <input type="text" placeholder="地點" value={newTrip.location} onChange={e => setNewTrip({...newTrip, location: e.target.value})} className="w-full p-4 rounded-xl bg-slate-50 font-bold outline-none focus:ring-2 focus:ring-blue-500" style={{ fontSize: '16px' }} />
+              <input type="text" placeholder="顯示名稱 / 筆記" value={newTrip.note} onChange={e => setNewTrip({...newTrip, note: e.target.value})} className="w-full p-4 rounded-xl bg-slate-50 font-bold outline-none focus:ring-2 focus:ring-blue-500" style={{ fontSize: '16px' }} />
+              <button onClick={saveTrip} className="w-full bg-blue-500 text-white p-4 rounded-xl font-black shadow-lg mt-2">確認儲存</button>
             </div>
           </div>
         </div>
@@ -485,11 +481,11 @@ export default function App() {
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 animate-in fade-in">
           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-md" onClick={() => setIsWishlistModalOpen(false)} />
           <div className="bg-white w-full max-w-sm rounded-[3rem] p-8 shadow-2xl relative z-10 animate-in zoom-in-95">
-            <div className="mb-6 text-center font-black uppercase">{editingWishId ? '編輯願望' : '新增願望'}</div>
+            <div className="mb-6 text-center font-black uppercase tracking-widest text-xs text-slate-400">{editingWishId ? '編輯願望' : '新增願望'}</div>
             <div className="space-y-3">
-              <div className="flex gap-2"><input type="text" placeholder="項目名稱" value={newWish.title} onChange={e => setNewWish({...newWish, title: e.target.value})} className="flex-1 p-4 rounded-xl bg-slate-50 text-sm font-bold outline-none focus:ring-2 focus:ring-amber-500" /><select value={newWish.category} onChange={e => setNewWish({...newWish, category: e.target.value})} className="p-4 rounded-xl bg-slate-50 text-xs font-black outline-none"><option>餐廳</option><option>景點</option><option>購物</option><option>其他</option></select></div>
-              <input type="text" placeholder="筆記" value={newWish.note} onChange={e => setNewWish({...newWish, note: e.target.value})} className="w-full p-4 rounded-xl bg-slate-50 text-sm font-bold outline-none focus:ring-2 focus:ring-amber-500" />
-              <button onClick={saveWish} className="w-full bg-amber-400 text-white p-4 rounded-xl font-black shadow-lg">確認儲存</button>
+              <div className="flex gap-2"><input type="text" placeholder="項目名稱" value={newWish.title} onChange={e => setNewWish({...newWish, title: e.target.value})} className="flex-1 p-4 rounded-xl bg-slate-50 font-bold outline-none focus:ring-2 focus:ring-amber-500" style={{ fontSize: '16px' }} /><select value={newWish.category} onChange={e => setNewWish({...newWish, category: e.target.value})} className="p-4 rounded-xl bg-slate-50 font-black outline-none" style={{ fontSize: '16px' }}><option>餐廳</option><option>景點</option><option>購物</option><option>其他</option></select></div>
+              <input type="text" placeholder="筆記" value={newWish.note} onChange={e => setNewWish({...newWish, note: e.target.value})} className="w-full p-4 rounded-xl bg-slate-50 font-bold outline-none focus:ring-2 focus:ring-amber-500" style={{ fontSize: '16px' }} />
+              <button onClick={saveWish} className="w-full bg-amber-400 text-white p-4 rounded-xl font-black shadow-lg mt-2">確認儲存</button>
             </div>
           </div>
         </div>
@@ -499,18 +495,18 @@ export default function App() {
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 animate-in fade-in">
           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-md" onClick={() => setIsExpenseModalOpen(false)} />
           <div className="bg-white w-full max-w-sm rounded-[3rem] p-8 shadow-2xl relative z-10 animate-in zoom-in-95">
-            <div className="mb-6 text-center font-black uppercase">{editingExpenseId ? '編輯消費' : '紀錄消費'}</div>
+            <div className="mb-6 text-center font-black uppercase tracking-widest text-xs text-slate-400">{editingExpenseId ? '編輯消費' : '紀錄消費'}</div>
             <div className="space-y-3">
-              <input type="date" value={newExpense.date} onChange={e => setNewExpense({...newExpense, date: e.target.value})} className="w-full p-4 rounded-xl bg-slate-50 text-xs font-bold outline-none focus:ring-2 focus:ring-emerald-500 mb-2" />
-              <input type="text" placeholder="消費項目 (如: 拉麵)" value={newExpense.item} onChange={e => setNewExpense({...newExpense, item: e.target.value})} className="w-full p-4 rounded-xl bg-slate-50 text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-500" />
+              <input type="date" value={newExpense.date} onChange={e => setNewExpense({...newExpense, date: e.target.value})} className="w-full p-4 rounded-xl bg-slate-50 font-bold outline-none focus:ring-2 focus:ring-emerald-500 mb-2" style={{ fontSize: '16px' }} />
+              <input type="text" placeholder="消費項目 (如: 拉麵)" value={newExpense.item} onChange={e => setNewExpense({...newExpense, item: e.target.value})} className="w-full p-4 rounded-xl bg-slate-50 font-bold outline-none focus:ring-2 focus:ring-emerald-500" style={{ fontSize: '16px' }} />
               <div className="flex gap-2">
                 <div className="flex-1 relative">
-                  <input type="number" placeholder="金額" value={newExpense.amount} onChange={e => setNewExpense({...newExpense, amount: e.target.value})} className="w-full p-4 rounded-xl bg-slate-50 text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-500" />
+                  <input type="number" placeholder="金額" value={newExpense.amount} onChange={e => setNewExpense({...newExpense, amount: e.target.value})} className="w-full p-4 rounded-xl bg-slate-50 font-bold outline-none focus:ring-2 focus:ring-emerald-500" style={{ fontSize: '16px' }} />
                   <button onClick={() => setNewExpense(p => ({ ...p, currency: p.currency === 'JPY' ? 'HKD' : 'JPY' }))} className="absolute right-2 top-2 bottom-2 px-2 bg-white text-[9px] font-black rounded-lg border">{newExpense.currency}</button>
                 </div>
-                <select value={newExpense.category} onChange={e => setNewExpense({...newExpense, category: e.target.value})} className="p-4 rounded-xl bg-slate-50 text-xs font-bold outline-none"><option>飲食</option><option>交通</option><option>購物</option><option>住宿</option><option>其他</option></select>
+                <select value={newExpense.category} onChange={e => setNewExpense({...newExpense, category: e.target.value})} className="p-4 rounded-xl bg-slate-50 font-bold outline-none" style={{ fontSize: '16px' }}><option>飲食</option><option>交通</option><option>購物</option><option>住宿</option><option>其他</option></select>
               </div>
-              <button onClick={saveExpense} className="w-full bg-emerald-500 text-white p-4 rounded-xl font-black shadow-lg">確認儲存</button>
+              <button onClick={saveExpense} className="w-full bg-emerald-500 text-white p-4 rounded-xl font-black shadow-lg mt-2">確認儲存</button>
             </div>
           </div>
         </div>
